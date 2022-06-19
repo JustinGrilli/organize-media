@@ -198,8 +198,8 @@ class OrganizeMedia(Tk):
         cache['geometry'] = {
             'w': self.winfo_width(),
             'h': self.winfo_height(),
-            'x': self.winfo_rootx(),
-            'y': self.winfo_rooty(),
+            'x': self.winfo_x(),
+            'y': self.winfo_y(),
         }
         os.makedirs('settings', exist_ok=True)
         with open('settings/cache', 'w') as file:
@@ -473,8 +473,7 @@ class OrganizeMedia(Tk):
                 renamed_file = info['renamed_file_name'] + '.' + extension
                 renamed_file_path = os.path.join(output_folder, renamed_file)
                 # Create output folder if it does not exist
-                if not os.path.exists(output_folder):
-                    os.makedirs(output_folder)
+                os.makedirs(output_folder, exist_ok=True)
                 # Move and then rename file
                 if not os.path.exists(output_path) and not os.path.exists(renamed_file_path):
                     shutil.move(file_path, output_path)
