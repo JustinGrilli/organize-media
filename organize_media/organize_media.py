@@ -381,61 +381,59 @@ class OrganizeMedia(Tk):
     def filter_window(self, all_media):
         """ The filter window that appears to filter the media files to be sorted.
 
-        :param all_media: The dictionary of all the media to filter
-        :return: Filtered media
+        Args:
+            all_media (dict): The dictionary of all the media to filter
+
+        Returns: Filtered media
         """
         self.filtered_media = deepcopy(all_media)
 
-        def upon_select(widget):
-            d = widget['destination']
-            fp = widget['file_path']
-            # Add or remove files from list when they are toggled
-            if widget['button'].var.get():
-                if fp not in self.filtered_media[d]:
-                    self.filtered_media[d][fp] = all_media[d][fp]
-                    widget['button']['bg'] = CONFIG.colors.sub
-            else:
-                if fp in self.filtered_media[d]:
-                    del self.filtered_media[d][fp]
-                    widget['button']['bg'] = CONFIG.colors.main
+        def on_toggle_off(metadata):
+            """ A function that is passed to the CheckBox,
+                and executes when the CheckBox is toggled off.
 
-        def toggle_all(x):
-            button, kind, files_dict = x
-            deselect_image = self.images.deselect
-            select_image = self.images.select
-            # Toggle each item in the dictionary based on the toggle
-            toggle = True if str(button['image']) == str(select_image) else False
-            for file, widget in files_dict.items():
-                widget['button'].var = BooleanVar(value=toggle)
-                widget['button']['variable'] = widget['button'].var
-                upon_select(widget)
-            if toggle:
-                button['image'] = deselect_image
-                if self.toggle_all_buttons[kind] == button:
-                    for title, b in self.toggle_title_buttons[kind].items():
-                        b['image'] = deselect_image
-            else:
-                button['image'] = select_image
-                if self.toggle_all_buttons[kind] == button:
-                    for title, b in self.toggle_title_buttons[kind].items():
-                        b['image'] = select_image
+            Args:
+                metadata (dict): The metadata from the CheckBox;
+                    CheckBox expects to pass metadata to this function
+            """
+            origin = metadata.get('origin_dir')
+            file_path = metadata.get('file_path')
+            if self.filtered_media.get(origin, {}).get(file_path):
+                del self.filtered_media[origin][file_path]
 
-            if self.toggle_all_buttons[kind] != button:
-                off_title_buttons = [str(btn['image']) for t, btn in self.toggle_title_buttons[kind].items()
-                                     if str(btn['image']) == str(select_image)]
-                if off_title_buttons:
-                    self.toggle_all_buttons[kind]['image'] = select_image
-                else:
-                    self.toggle_all_buttons[kind]['image'] = deselect_image
+        def on_toggle_on(metadata):
+            """ A function that is passed to the CheckBox,
+                and executes when the CheckBox is toggled on.
+
+            Args:
+                metadata (dict): The metadata from the CheckBox;
+                    CheckBox expects to pass metadata to this function
+            """
+            origin = metadata.get('origin_dir')
+            file_path = metadata.get('file_path')
+            if not self.filtered_media.get(origin, {}).get(file_path):
+                self.filtered_media[origin][file_path] = all_media[origin][file_path]
 
         def reform_files_dict(files):
+            """ Reforms the media files dict, to a format that can be used to generate CheckBoxes.
+                Here we also pass our on_toggle_off and on_toggle_on functions,
+                as well as any additional metadata we need the CheckBox to have.
+
+            Args:
+                files (dict): The dict of all media files to be reformed
+
+            Returns: The reformed files dict
+            """
             new_files = dict()
             for folder, info in files.items():
                 new_files.setdefault(folder, {})
                 for file_path, file_info in info.items():
-                    kind = file_info['kind']
+                    kind = f"{file_info['kind']}s"
                     title = file_info.get('title')
                     season_num = file_info.get('season')
+                    file_info['origin_dir'] = folder
+                    file_info['on_toggle_off'] = on_toggle_off
+                    file_info['on_toggle_on'] = on_toggle_on
                     if season_num is not None:
                         season = 'Season ' + str(season_num) if season_num != -1 else 'Extras'
                         new_files[folder].setdefault(kind, {})
@@ -448,106 +446,8 @@ class OrganizeMedia(Tk):
 
             return new_files
 
-        def create_checklist(frame, files):
-            """
-            files Sample: {
-                'downloads/': {
-                    'file/path.mp4': {
-                        'episode': 1,
-                        'file_path': 'file/path.mp4',
-                        'kind': 'TV Show'
-                    }
-                }
-            }
-
-            Args:
-                frame (Widget):
-                files (dict):
-            """
-            reformed_files = reform_files_dict(files)
-            kind_mapping = {'TV Show': 'TV Shows', 'Movie': 'Movies'}
-            self.toggle_all_buttons = {k: {} for k in kind_mapping.keys()}
-            self.toggle_title_buttons = {k: {} for k in kind_mapping.keys()}
-
-            def recursive_helper(widget, dictionary):
-                for k, v in dictionary.items():
-                    checkbox = ui.CheckBox(widget, text=k, font=CONFIG.fonts.small)
-                    checkbox.pack(side=TOP, fill=X, anchor=NW)
-                    if isinstance(v, dict):
-                        recursive_helper(checkbox.content_frame, v)
-                    elif isinstance(v, list):
-                        for item in v:
-                            content_checkbox = ui.CheckBox(
-                                checkbox.content_frame, text=item['renamed_file_name'], bg=CONFIG.colors.sub,
-                                font=CONFIG.fonts.xsmall, expandable=False
-                            )
-                            content_checkbox.pack(side=TOP, fill=X, anchor=NW)
-
-            for folder_path, file_type_info in reformed_files.items():
-                destination_frame = Frame(frame, bg=CONFIG.colors.main, bd=1, relief=RIDGE)
-                destination_frame.pack(side=LEFT, padx=4, pady=4, anchor=N)
-                destination_title = Label(destination_frame, text=folder_path, anchor=NW, justify=LEFT,
-                                          bg=CONFIG.colors.main, fg=CONFIG.colors.font, font=CONFIG.fonts.medium)
-                destination_title.pack(side=TOP, fill=X, anchor=W)
-                Separator(destination_frame).pack(side=TOP, fill=X)
-                recursive_helper(destination_frame, file_type_info)
-                continue
-                for idx, kind, title_info in enumerate(file_type_info.items()):
-                    kind_dict = dict()
-                    if idx > 0:
-                        # Add a separator between shows and movies
-                        Separator(destination_frame).pack(fill=X, pady=8)
-                    media_type_checkbox = ui.CheckBox(destination_frame, text=kind_mapping[kind], font=CONFIG.fonts.small)
-                    media_type_checkbox.pack(side=TOP, fill=X, anchor=NW)
-                    # Toggle everything for each 'Kind'
-                    self.toggle_all_buttons[kind] = media_type_checkbox.button
-                    for title, file_info in title_info.items():
-                        dictionary = dict()
-                        if kind == 'TV Show':
-                            show_title_checkbox = ui.CheckBox(media_type_checkbox.content_frame, text=title, font=CONFIG.fonts.small)
-                            show_title_checkbox.pack(side=TOP, fill=X, anchor=NW)
-                            self.toggle_title_buttons[kind][title] = show_title_checkbox.button
-                            season_frames = {}
-                            try:
-                                for season_num, episodes in file_info.items():
-                                    season = 'Season ' + str(season_num) if season_num != -1 else 'Extras'
-                                    season_checkbox = ui.CheckBox(
-                                        show_title_checkbox.content_frame, text=season, font=CONFIG.fonts.small
-                                    )
-                                    season_checkbox.pack(side=TOP, fill=X, anchor=NW)
-                                    season_frames[season_num] = season_checkbox.content_frame
-                            except Exception as e:
-                                print(title)
-                                print(file_info)
-                                raise Exception(e)
-
-                        if kind == 'Movie':
-                            for i in file_info:
-                                file_path = i['file_path']
-                                dictionary[file_path] = i
-                                if kind == 'TV Show':
-                                    dictionary[file_path]['button'] = Checkbutton(season_frames[i['season']])
-                                else:
-                                    dictionary[file_path]['button'] = Checkbutton(media_type_checkbox.content_frame)
-                                dictionary[file_path]['button'].config(text=i['renamed_file_name'], fg=CONFIG.colors.font,
-                                                                       onvalue=True, offvalue=False, anchor=NW,
-                                                                       bg=CONFIG.colors.sub, font=CONFIG.fonts.xsmall,
-                                                                       selectcolor=CONFIG.colors.main)
-                                dictionary[file_path]['button'].var = BooleanVar(value=True)
-                                dictionary[file_path]['button']['variable'] = dictionary[file_path]['button'].var
-                                dictionary[file_path]['button']['command'] = lambda w=dictionary[file_path]: upon_select(w)
-                                dictionary[file_path]['button'].pack(side=TOP, fill=X, anchor=NW, pady=1, padx=1)
-                                dictionary[file_path]['destination'] = folder_path
-                                kind_dict[file_path] = dictionary[file_path]
-                        if kind == 'TV Show':
-                            self.toggle_title_buttons[kind][title]['command'] = lambda d=(self.toggle_title_buttons[kind][title]
-                                                                                      , kind, dictionary): toggle_all(d)
-                    self.toggle_all_buttons[kind]['command'] = lambda d=(self.toggle_all_buttons[kind], kind,
-                                                                         kind_dict): toggle_all(d)
-
         checkboxes = ui.CheckBoxes(self.canvas_frame, reform_files_dict(all_media))
         checkboxes.pack()
-        # create_checklist(self.canvas_frame, files=all_media)
 
     def recursively_organize_shows_and_movies(self, delete_folders=True):
         dl_path = get_user_set_path(SETTINGS_PATH, 'downloads')
