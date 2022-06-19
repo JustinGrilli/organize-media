@@ -65,18 +65,6 @@ class Fonts:
 
 
 @dataclass
-class Paths:
-    downloads: str = ''
-    media: str = ''
-
-
-@dataclass
-class UserSettingsTemplate:
-    media_extensions: list[str] = field(default_factory=list)
-    paths: [Paths] = Paths()
-
-
-@dataclass
 class Settings:
     title: str = 'Media Organizer'
     geometry: [Geometry] = Geometry()
@@ -91,10 +79,14 @@ if os.path.exists('settings/cache'):
     CONFIG = Settings(geometry=Geometry(**cache['geometry']))
 else:
     CONFIG = Settings()
-user_settings_template = UserSettingsTemplate(
-    media_extensions=['mp4', 'mkv', 'avi', 'flv', 'wmv', 'webm', 'm4p', 'mov', 'm4v', 'mpg', '3gp']
-)
+
+user_settings_template = {
+    'media_extensions': ['mp4', 'mkv', 'avi', 'flv', 'wmv', 'webm', 'm4p', 'mov', 'm4v', 'mpg', '3gp'],
+    'paths': {
+        'downloads': '',
+        'media': ''
+    }
+}
 
 if __name__ == '__main__':
     print(CONFIG.colors.main)
-    print(user_settings_template.media_extensions)

@@ -5,9 +5,8 @@ import re
 import json
 import yaml
 from tkinter import *
-from tkinter.ttk import Progressbar, Style, Separator
+from tkinter.ttk import Progressbar, Style
 from copy import deepcopy
-from pprint import pprint
 
 from functionality.general_functions import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
     initcap_file_name, get_media_title
@@ -86,6 +85,10 @@ class OrganizeMedia(Tk):
         self.iconbitmap('Images/organize_media.ico')
         self.config(bg=CONFIG.colors.main)
 
+        # Images
+        self.images = Images()
+        self.images.populate()
+
         self.on_startup()
 
         self.geometry('{w}x{h}+{x}+{y}'.format(**CONFIG.geometry.__dict__))
@@ -95,10 +98,6 @@ class OrganizeMedia(Tk):
         self.filtered_media = {}
         self.all_media_info = {}
         self.disable_buttons = False
-
-        # Images
-        self.images = Images()
-        self.images.populate()
 
         # Frames
         self.left_frame = Frame(self, bg=CONFIG.colors.main)
@@ -178,7 +177,7 @@ class OrganizeMedia(Tk):
                          font=CONFIG.fonts.xxlarge)
             lbl2 = Label(frame, text='Start by locating your media', wraplength=450,
                          bg=CONFIG.colors.main, fg='#%02x%02x%02x' % (180, 53, 240), font=CONFIG.fonts.xlarge)
-            b = Button(frame, image=ImageData('', 'Images/dir.png', 94, 94).get(),
+            b = Button(frame, image=self.images.organize,
                        bg=CONFIG.colors.main, relief=RAISED, cursor='hand2')
             b.config(command=lambda x=(lbl1, frame, b): self.on_first_locate_media(x))
 
