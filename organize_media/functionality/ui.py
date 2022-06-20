@@ -2,6 +2,151 @@ from tkinter import *
 from .data import Images, CONFIG
 
 
+class ScrollFrame(Frame):
+    def __init__(self, widget, bd=0, relief=None, bg=CONFIG.colors.main, *arg, **kwargs):
+        self.canvas = Canvas(widget, bg=bg, bd=bd, relief=relief, highlightthickness=0, *arg, **kwargs)
+        Frame.__init__(self, self.canvas, bg=bg)
+        self.name = 'ScrollFrame'
+
+        # Scrollbars
+        ybar = Scrollbar(widget, command=self.canvas.yview, orient=VERTICAL)
+        xbar = Scrollbar(widget, command=self.canvas.xview, orient=HORIZONTAL)
+
+        self.bind("<Configure>", lambda e: self.canvas.configure(
+            scrollregion=self.canvas.bbox("all"),
+            width=self.winfo_width(),
+            height=self.winfo_height()
+        ))
+        self.canvas.create_window((0, 0), window=self, anchor=NW)
+        self.canvas.config(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
+
+        ybar.pack(side=RIGHT, fill=Y)
+        xbar.pack(side=BOTTOM, fill=X)
+        self.canvas.pack(side=LEFT, fill=BOTH, expand=True)
+
+        self.bind_all("<MouseWheel>", self.__on_mousewheel)
+
+    def __get_scroll_frame_from_parents(self, widget):
+        """
+        Args:
+            widget (Widget):
+        """
+        if not widget:
+            return widget
+
+        if widget.__dict__.get('name') == 'ScrollFrame':
+            return widget
+
+        return self.__get_scroll_frame_from_parents(widget.master)
+
+    def __get_scroll_frame_from_children(self, widget):
+        """
+        Args:
+            widget (Widget):
+        """
+        if not widget:
+            return widget
+
+        for child in widget.winfo_children():
+            if child.__dict__.get('name') == 'ScrollFrame':
+                return child
+            return self.__get_scroll_frame_from_children(child)
+
+    def __on_mousewheel(self, event):
+        x, y = self.winfo_pointerxy()
+        target = self.winfo_containing(x, y)
+
+        if target.__dict__.get('name') == 'ScrollFrame':
+            scroll_frame = target
+        else:
+            scroll_frame = self.__get_scroll_frame_from_parents(target)
+        if not scroll_frame:
+            scroll_frame = self.__get_scroll_frame_from_children(target)
+
+        if scroll_frame:
+            scroll_frame.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def pack(self, *args, **kwargs):
+        # super().pack(*args, **kwargs)
+        pass
+
+
+class OMLabel(Label):
+    def __init__(self, widget,
+                 bg=CONFIG.colors.main,
+                 highlight_bg=CONFIG.colors.sub,
+                 fg=CONFIG.colors.font,
+                 tooltip=None, *args, **kwargs):
+        Label.__init__(self, widget, bg=bg, fg=fg, *args, **kwargs)
+        # Tooltip
+        self.default_bg = bg
+        self.highlight_bg = highlight_bg
+        self.tooltip = tooltip
+        self.tooltip_id = None
+        self.tooltip_widget = None
+
+        self.bind('<Enter>', self.__mouse_enter)
+        self.bind('<Leave>', self.__mouse_leave)
+
+    def config(self, *args, **kwargs):
+        """
+        Args:
+
+        Keyword Args:
+            highlight_bg (str): The highlighting color on mouse hover
+            default_bg (str): The default background color
+            bg (str): The current background color
+        """
+        if 'highlight_bg' in kwargs:
+            self.highlight_bg = kwargs.pop('highlight_bg')
+        if 'default_bg' in kwargs:
+            self.default_bg = kwargs.pop('default_bg')
+        super().config(*args, **kwargs)
+
+    def __mouse_enter(self, event):
+        if self['state'] != DISABLED:
+            self.config(bg=self.highlight_bg)
+            self.__schedule_tooltip()
+
+    def __mouse_leave(self, event):
+        self.config(bg=self.default_bg)
+        self.__unschedule_tooltip()
+        self.__hide_tooltip()
+
+    def __show_tooltip(self, event=None):
+        x = y = 0
+        x, y, cx, cy = self.bbox("insert")
+        x += self.winfo_pointerx() + 10
+        y += self.winfo_pointery() + 10
+        # creates a toplevel window
+        self.tooltip_widget = Toplevel(self)
+        # Leaves only the label and removes the app window
+        self.tooltip_widget.wm_overrideredirect(True)
+        self.tooltip_widget.wm_geometry(f"+{x}+{y}")
+        label = Label(self.tooltip_widget, text=self.tooltip, justify='left',
+                      background=self['bg'], foreground=self['fg'], relief='solid', borderwidth=1,
+                      wraplength=180)
+        label.pack(ipadx=1)
+
+    def __hide_tooltip(self):
+        tw = self.tooltip_widget
+        self.tooltip_widget = None
+        if tw:
+            tw.destroy()
+
+    def __schedule_tooltip(self):
+        if not self.tooltip:
+            return None
+        self.__unschedule_tooltip()
+        self.tooltip_id = self.after(500, self.__show_tooltip)
+
+    def __unschedule_tooltip(self):
+        tooltip_id = self.tooltip_id
+        self.tooltip_id = None
+        if tooltip_id:
+            self.after_cancel(tooltip_id)
+
+
 class OMButton(Button):
     def __init__(self, widget,
                  bg=CONFIG.colors.main,
@@ -189,6 +334,7 @@ class CheckBox(Frame):
                  selected_bg=CONFIG.colors.sub,
                  fg=CONFIG.colors.font,
                  font=CONFIG.fonts.medium,
+                 tooltip=None,
                  metadata: dict = None,
                  expandable: bool = True,
                  on_toggle_off=None,
@@ -217,14 +363,22 @@ class CheckBox(Frame):
         self.header_frame = Frame(self, bg=self.header_bg, bd=0)
         self.button = OMButton(self.header_frame, image=self.__images.deselect, cursor='hand2', bg=self.bg,
                                command=self.toggle_checkbox, relief=FLAT, anchor=W)
+        title_attributes = {
+            'text': text,
+            'font': self.font,
+            'tooltip': tooltip,
+            'bg': self.selected_bg,
+            'highlight_bg': self.selected_bg,
+            'fg': self.fg,
+            'relief': RAISED,
+            'anchor': W,
+            'justify': LEFT
+        }
         if self.expandable:
             self.content_frame = Frame(self, bg=self.bg, bd=0)
-            self.title = OMButton(self.header_frame, text=text, cursor='hand2', font=self.font,
-                                  bg=self.selected_bg, highlight_bg=self.selected_bg, fg=self.fg,
-                                  command=self.__toggle_content, relief=RAISED, anchor=W, justify=LEFT)
+            self.title = OMButton(self.header_frame, cursor='hand2', command=self.__toggle_content, **title_attributes)
         else:
-            self.title = Label(self.header_frame, text=text, bg=self.selected_bg, fg=self.fg, font=self.font,
-                               relief=RAISED, anchor=W, justify=LEFT)
+            self.title = OMLabel(self.header_frame, **title_attributes)
 
     def __toggle_content(self):
         """ Toggle the visibility of the content_frame """
@@ -241,17 +395,14 @@ class CheckBox(Frame):
             """
             if self.selected:
                 widget.button.config(image=self.__images.select)
-                widget.title.config(bg=widget.title_bg)
-                if widget.expandable:
-                    widget.title.config(default_bg=widget.title_bg)
+                widget.title.config(bg=widget.title_bg, default_bg=widget.title_bg)
+                widget.title.config()
                 widget.selected = False
                 if widget.on_toggle_off:
                     widget.on_toggle_off(widget.metadata)
             else:
                 widget.button.config(image=self.__images.deselect)
-                widget.title.config(bg=widget.selected_bg)
-                if widget.expandable:
-                    widget.title.config(default_bg=widget.selected_bg)
+                widget.title.config(bg=widget.selected_bg, default_bg=widget.selected_bg)
                 widget.selected = True
                 if widget.on_toggle_on:
                     widget.on_toggle_on(widget.metadata)
@@ -293,8 +444,9 @@ class CheckBoxes(Frame):
         self.font = font
         # The first level of the dictionary is considered the header
         for top_level_key, next_dict in items_dict.items():
-            frame = Frame(self, bg=self.bg, bd=0, relief=RIDGE)
-            frame.pack(side=LEFT, padx=4, pady=4, anchor=N)
+            container = Frame(self, bg=self.bg)
+            container.pack(side=LEFT, anchor=NW, fill=BOTH, expand=True)
+            frame = ScrollFrame(container, bg=self.bg)
             title = Label(frame, text=top_level_key, bg=self.bg, fg=self.fg, font=self.font, anchor=NW, justify=LEFT)
             title.pack(side=TOP, fill=X, anchor=W)
             self.generate_checkboxes(frame, next_dict)
@@ -315,6 +467,7 @@ class CheckBoxes(Frame):
                         checkbox.content_frame,
                         text=item.get('renamed_file_name'),
                         font=CONFIG.fonts.xsmall,
+                        tooltip=item.get('file_path'),
                         expandable=False,
                         on_toggle_off=on_toggle_off,
                         on_toggle_on=on_toggle_on,

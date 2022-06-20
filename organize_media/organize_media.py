@@ -100,24 +100,14 @@ class OrganizeMedia(Tk):
         self.disable_buttons = False
 
         # Frames
-        self.left_frame = Frame(self, bg=CONFIG.colors.main)
+        self.left_frame = Frame(self, bg=CONFIG.colors.main, bd=2, relief=RAISED)
         self.left_frame.bind('<Destroy>', self.cache_info)  # Used to cache info when exiting the application
+        self.canvas_frame = Frame(self, bg=CONFIG.colors.main)
         self.status_bar = Canvas(self, bg=CONFIG.colors.sub, bd=0, highlightthickness=0,
                                  width=CONFIG.geometry.w, height=0, relief=SUNKEN)
         self.status_bar.pack(side=BOTTOM, fill=X)
         self.left_frame.pack(side=LEFT, fill=Y, ipadx=14, ipady=14)
-
-        self.middle_canvas = Canvas(self, bg=CONFIG.colors.sub, bd=2, highlightthickness=0, relief=SUNKEN)
-        self.canvas_frame = Frame(self.middle_canvas, bg=CONFIG.colors.sub)
-        self.bind('<Configure>', self.mid_canvas_dim)
-        self.middle_canvas.create_window((0, 0), window=self.canvas_frame, anchor=NW)
-        y_scroll_bar = Scrollbar(self, command=self.middle_canvas.yview, orient=VERTICAL)
-        x_scroll_bar = Scrollbar(self, command=self.middle_canvas.xview, orient=HORIZONTAL)
-        self.middle_canvas.config(yscrollcommand=y_scroll_bar.set, xscrollcommand=x_scroll_bar.set)
-        y_scroll_bar.pack(side=RIGHT, fill=Y)
-        x_scroll_bar.pack(side=BOTTOM, fill=X)
-        self.middle_canvas.pack(side=LEFT, fill=BOTH, expand=True, ipadx=4)
-        self.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.canvas_frame.pack(side=LEFT, anchor=NW, fill=BOTH, expand=True)
 
         # Buttons
         self.buttons = ui.Buttons(self.left_frame)
@@ -204,21 +194,6 @@ class OrganizeMedia(Tk):
         os.makedirs('settings', exist_ok=True)
         with open('settings/cache', 'w') as file:
             json.dump(cache, file, indent=2)
-
-    def mid_canvas_dim(self, event):
-        """ Handles resizing of the 'Selected Media' portion of the app, when the app is resized """
-        self.middle_canvas.configure(
-            scrollregion=self.middle_canvas.bbox("all"),
-            width=self.winfo_width(),
-            height=self.winfo_height()
-        )
-
-    def _on_mousewheel(self, event):
-        x, y = self.winfo_pointerxy()
-        canvas = self.winfo_containing(x, y)
-        widget_path = str(canvas.master)
-        if widget_path == '.' or widget_path.startswith('.!canvas2') or widget_path.startswith('.filterwindow'):
-            self.middle_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def get_media_info_from_paths(self, paths):
         """ Gets all media information from media files in the given paths
@@ -439,14 +414,20 @@ class OrganizeMedia(Tk):
                         new_files[folder][kind].setdefault(title, {})
                         new_files[folder][kind][title].setdefault(season, [])
                         new_files[folder][kind][title][season].append(file_info)
+                        # Sort the files by the new name
+                        new_files[folder][kind][title][season] = list(sorted(
+                            new_files[folder][kind][title][season], key=lambda f: f['renamed_file_name']))
                     else:
                         new_files[folder].setdefault(kind, [])
                         new_files[folder][kind].append(file_info)
+                        # Sort the files by the new name
+                        new_files[folder][kind] = list(sorted(
+                            new_files[folder][kind], key=lambda f: f['renamed_file_name']))
 
             return new_files
 
         checkboxes = ui.CheckBoxes(self.canvas_frame, reform_files_dict(all_media))
-        checkboxes.pack()
+        checkboxes.pack(side=LEFT, anchor=NW, fill=BOTH, expand=True)
 
     def recursively_organize_shows_and_movies(self, delete_folders=True):
         dl_path = get_user_set_path(SETTINGS_PATH, 'downloads')
