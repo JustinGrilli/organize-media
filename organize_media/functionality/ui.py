@@ -275,7 +275,6 @@ class Buttons:
             widget (Widget):
         """
         self.__images = Images()
-        self.__images.populate()
 
         self.locate_media = TextImageButton(
             widget=widget,
@@ -358,7 +357,6 @@ class CheckBox(Frame):
         self.on_toggle_on = on_toggle_on
 
         self.__images = Images()
-        self.__images.populate()
 
         self.header_frame = Frame(self, bg=self.header_bg, bd=0)
         self.button = OMButton(self.header_frame, image=self.__images.deselect, cursor='hand2', bg=self.bg,

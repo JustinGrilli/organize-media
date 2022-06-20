@@ -11,7 +11,7 @@ from copy import deepcopy
 from functionality.general_functions import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
     initcap_file_name, get_media_title
 from functionality.mo_functions import get_user_set_path, save_paths
-from functionality.data import CONFIG, user_settings_template, ImageData, Images
+from functionality.data import CONFIG, user_settings_template, Images
 import functionality.ui as ui
 
 
@@ -87,7 +87,6 @@ class OrganizeMedia(Tk):
 
         # Images
         self.images = Images()
-        self.images.populate()
 
         self.on_startup()
 
@@ -162,13 +161,14 @@ class OrganizeMedia(Tk):
 
     def on_startup(self):
         if not self.settings['paths'].get('downloads'):
+            organize_image = self.images.organize
+            organize_image.resize(94, 94)
             frame = Frame(self, bg=CONFIG.colors.main)
             lbl1 = Label(frame, text='Sup,', bg=CONFIG.colors.main, fg=CONFIG.colors.alt,
                          font=CONFIG.fonts.xxlarge)
             lbl2 = Label(frame, text='Start by locating your media', wraplength=450,
                          bg=CONFIG.colors.main, fg='#%02x%02x%02x' % (180, 53, 240), font=CONFIG.fonts.xlarge)
-            b = Button(frame, image=self.images.organize,
-                       bg=CONFIG.colors.main, relief=RAISED, cursor='hand2')
+            b = Button(frame, image=organize_image, bg=CONFIG.colors.main, relief=RAISED, cursor='hand2')
             b.config(command=lambda x=(lbl1, frame, b): self.on_first_locate_media(x))
 
             frame.pack(ipadx=20)
@@ -399,13 +399,19 @@ class OrganizeMedia(Tk):
             Returns: The reformed files dict
             """
             new_files = dict()
-            for folder, info in files.items():
+            for folder_dir, info in files.items():
+                # Reduce the display of the folder path to the last two folders, maximum
+                folder_path = os.path.normpath(folder_dir).split(os.sep)
+                if len(folder_path) > 1:
+                    folder = os.path.join(*folder_path[-2:])
+                else:
+                    folder = os.path.join(*folder_path)
                 new_files.setdefault(folder, {})
                 for file_path, file_info in info.items():
                     kind = f"{file_info['kind']}s"
                     title = file_info.get('title')
                     season_num = file_info.get('season')
-                    file_info['origin_dir'] = folder
+                    file_info['origin_dir'] = folder_dir
                     file_info['on_toggle_off'] = on_toggle_off
                     file_info['on_toggle_on'] = on_toggle_on
                     if season_num is not None:

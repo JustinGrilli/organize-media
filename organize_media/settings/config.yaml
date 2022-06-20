@@ -11,5 +11,5 @@ media_extensions:
 - mpg
 - 3gp
 paths:
-  downloads: resources/Downloads
-  media: resources/Media
+  downloads:
+  media:

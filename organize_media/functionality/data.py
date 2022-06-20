@@ -1,38 +1,37 @@
 import os
 import json
 from PIL import Image, ImageTk
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
-@dataclass
-class ImageData:
-    name: str = ''
-    path: str = ''
-    width: int = 64
-    height: int = 64
+class OMImage(ImageTk.PhotoImage):
+    """
+        Extends the functionality of ImageTk.PhotoImage.
+        Allows PhotoImage fetching by path, and size declaration by width and height.
+    """
+    def __init__(self, path, width=64, height=64, **kw):
+        self.path = path
+        self.size = (width, height)
+        self.image = self.__get_image()
+        ImageTk.PhotoImage.__init__(self, self.image, **kw)
 
-    def get(self):
+    def __get_image(self):
         with Image.open(self.path) as img:
-            _image = img.resize((self.width, self.height), Image.ANTIALIAS)
-        return ImageTk.PhotoImage(_image)
+            image = img.resize(self.size, Image.ANTIALIAS)
+        return image
+
+    def resize(self, width, height):
+        self.__init__(self.path, width, height)
 
 
-@dataclass
 class Images:
-    locate_media: [ImageData] = ImageData('Locate Media', 'Images/dir.png')
-    select_media: [ImageData] = ImageData('Select Media', 'Images/filter.png')
-    organize: [ImageData] = ImageData('Organize', 'Images/organize_media.png')
-    deselect: [ImageData] = ImageData('deselect', 'Images/deselect.png', 24, 24)
-    select: [ImageData] = ImageData('select', 'Images/select.png', 24, 24)
-    arrow: [ImageData] = ImageData('arrow', 'Images/arrow.png', 24, 24)
-
-    def populate(self):
-        self.locate_media = self.locate_media.get()
-        self.select_media = self.select_media.get()
-        self.organize = self.organize.get()
-        self.deselect = self.deselect.get()
-        self.select = self.select.get()
-        self.arrow = self.arrow.get()
+    def __init__(self):
+        self.locate_media: [OMImage] = OMImage('Images/dir.png')
+        self.select_media: [OMImage] = OMImage('Images/filter.png')
+        self.organize: [OMImage] = OMImage('Images/organize_media.png')
+        self.deselect: [OMImage] = OMImage('Images/deselect.png', 24, 24)
+        self.select: [OMImage] = OMImage('Images/select.png', 24, 24)
+        self.arrow: [OMImage] = OMImage('Images/arrow.png', 24, 24)
 
 
 @dataclass
