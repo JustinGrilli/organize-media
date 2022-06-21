@@ -11,5 +11,5 @@ A Python GUI tool, used for organizing your local media files.
 To compile the application, run the following:
 ```
 pip install pyinstaller
-pyinstaller -w -F --hidden-import pillow --paths organize_media --paths organize_media/functionality --distpath "./Organize Media" -n "Organize Media" organize_media/organize_media.py
+pyinstaller -w -F --paths src --distpath "./Organize Media" -n "Organize Media" src/app.py
 ```
