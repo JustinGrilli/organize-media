@@ -2,7 +2,7 @@ import math
 from tkinter import *
 
 from src.components.ui import Buttons
-from src.funcs.mo_functions import save_paths
+from src.funcs.user_configuration import save_paths
 from src.components.data import CONFIG
 
 

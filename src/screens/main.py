@@ -8,9 +8,9 @@ from tkinter.ttk import Progressbar, Style
 from copy import deepcopy
 
 from src.components.ui import ButtonGroup, CheckBoxes
-from src.funcs.general_functions import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
+from src.funcs.general import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
     initcap_file_name, get_media_title
-from src.funcs.mo_functions import get_user_set_path, save_paths
+from src.funcs.user_configuration import get_user_set_path, save_paths
 from src.components.data import CONFIG, Images
 
 
