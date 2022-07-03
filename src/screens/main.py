@@ -7,7 +7,7 @@ from tkinter import *
 from tkinter.ttk import Progressbar, Style
 from copy import deepcopy
 
-from src.components.ui import ButtonGroup, CheckBoxes
+from src.components.ui import ButtonGroup, CheckBoxes, OMButton
 from src.funcs.general import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
     initcap_file_name, get_media_title
 from src.funcs.user_configuration import get_user_set_path, save_paths
@@ -32,7 +32,7 @@ class Main(Frame):
 
         # Frames
         self.left_frame = Frame(self, bg=CONFIG.colors.main, bd=2, relief=RAISED)
-        self.bind('<Destroy>', self.cache_info)  # Used to cache info when exiting the application
+        self.bind('<Destroy>', self.__on_destroy)  # Used to cache info when exiting the application
         self.canvas_frame = Frame(self, bg=CONFIG.colors.main)
         self.status_bar = Canvas(self, bg=CONFIG.colors.sub, bd=0, highlightthickness=0,
                                  width=self.winfo_width(), height=0, relief=SUNKEN)
@@ -77,8 +77,8 @@ class Main(Frame):
         """ Handles resizing progress bar, when the app is resized """
         self.progress_bar.config(length=self.winfo_width()-8)
 
-    def cache_info(self, event):
-        """ Handles resizing progress bar, when the app is resized """
+    def __on_destroy(self, event):
+        """ Caches some information when the App is closed """
         cache = dict()
         cache['geometry'] = {
             'w': self.master.winfo_width(),
@@ -431,8 +431,8 @@ class Main(Frame):
             dictionary[i]['button']['command'] = lambda w=dictionary[i]: upon_select(w)
             dictionary[i]['button'].pack(side=TOP, fill=X, padx=1, pady=1)
             dictionary[i]['todo'] = i
-        submit_button = Button(main_frame, text='Select', command=on_submit, font=CONFIG.fonts.small,
-                               bg=CONFIG.colors.special, fg=CONFIG.colors.font)
+        submit_button = OMButton(main_frame, text='Select', command=on_submit, font=CONFIG.fonts.small,
+                                 bg=CONFIG.colors.special, highlight_bg=CONFIG.colors.special_alt, fg=CONFIG.colors.font)
         submit_button.pack(side=BOTTOM, pady=20)
         self.wait_window(main_frame)
         return self.final_todo_list

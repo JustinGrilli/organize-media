@@ -32,6 +32,7 @@ class Images:
         self.deselect: [OMImage] = OMImage('Images/deselect.png', 24, 24)
         self.select: [OMImage] = OMImage('Images/select.png', 24, 24)
         self.arrow: [OMImage] = OMImage('Images/arrow.png', 24, 24)
+        self.icon: [OMImage] = OMImage('Images/toolbar_icon.ico', 30, 30)
 
 
 @dataclass

@@ -149,11 +149,15 @@ class OMLabel(Label):
 
 class OMButton(Button):
     def __init__(self, widget,
+                 cursor="hand2",
+                 fg=CONFIG.colors.font,
                  bg=CONFIG.colors.main,
                  highlight_bg=CONFIG.colors.sub,
-                 fg=CONFIG.colors.font,
                  tooltip=None, *args, **kwargs):
-        Button.__init__(self, widget, bg=bg, fg=fg, *args, **kwargs)
+        Button.__init__(self, widget, cursor=cursor, bg=bg, fg=fg,
+                        activebackground=highlight_bg,
+                        activeforeground=fg,
+                        *args, **kwargs)
         # Tooltip
         self.default_bg = bg
         self.highlight_bg = highlight_bg
