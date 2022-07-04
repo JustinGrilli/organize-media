@@ -1,0 +1,15 @@
+media_extensions: !!set
+  3gp: null
+  avi: null
+  flv: null
+  m4p: null
+  m4v: null
+  mkv: null
+  mov: null
+  mp4: null
+  mpg: null
+  webm: null
+  wmv: null
+paths:
+  downloads: resources/Downloads
+  media: resources/Media
