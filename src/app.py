@@ -2,15 +2,15 @@ import os
 import yaml
 from tkinter import *
 
-from screens import FreshStartup, Main
-from components.data import CONFIG, user_settings_template, Images, OMImage
+from screens import FreshStartup, Main, SelectMedia
+from components.data import CONFIG, Images, OMImage
 from components import TitleBar
 
 
-SETTINGS_PATH = 'settings/config.yaml'
 SCREENS = {
     'fresh_startup': FreshStartup,
     'main': Main,
+    'select_media': SelectMedia,
 }
 
 
@@ -21,12 +21,11 @@ class OrganizeMedia(Tk):
     def __init__(self):
         Tk.__init__(self)
         self.mouse_edges = set()
+        self.selected_media = set()
         self.config(bg=CONFIG.colors.main)
         self.geometry(CONFIG.geometry)
         self.title(CONFIG.title)
         self.__images = Images()
-        # self.iconbitmap('Images/toolbar_icon.ico')
-        # self.iconphoto(True, self.__images.organize)
         self.titlebar = TitleBar(self, image=self.__images.icon)
         self.titlebar.pack(side=TOP, fill=X)
         self.settings = self.__get_user_settings()
@@ -44,12 +43,16 @@ class OrganizeMedia(Tk):
     @staticmethod
     def __get_user_settings():
         # Initialize user settings if they don't exist
-        os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
-        if not os.path.exists(SETTINGS_PATH):
-            with open(SETTINGS_PATH, 'w') as c:
-                yaml.dump(user_settings_template, c, indent=2)
+        os.makedirs(os.path.dirname(CONFIG.settings_path), exist_ok=True)
+        if not os.path.exists(CONFIG.settings_path):
+            with open(CONFIG.settings_path, 'w') as c:
+                user_settings = {
+                    'media_extensions': CONFIG.media_extensions,
+                    **CONFIG.paths.to_dict()
+                }
+                yaml.dump(user_settings, c, indent=2)
 
-        with open(SETTINGS_PATH) as file:
+        with open(CONFIG.settings_path) as file:
             settings = yaml.safe_load(file)
         return settings
 
@@ -132,7 +135,6 @@ class OrganizeMedia(Tk):
         Args:
             next_screen (str):
         """
-        print('Changed Screens')
         self.screen.pack_forget()
         self.screen.destroy()
         self.screen = SCREENS[next_screen](self)

@@ -13,7 +13,7 @@ def save_paths(settings_path):
     with open(settings_path) as c:
         settings = yaml.safe_load(c)
 
-    for folder in ['downloads', 'media']:
+    for folder in settings['paths']:
         path = filedialog.askdirectory(title=f'Choose the path to your {folder.title()} folder.')
         if path:
             settings['paths'][folder] = path

@@ -3,10 +3,7 @@ from tkinter import *
 
 from src.components.ui import Buttons
 from src.funcs.user_configuration import save_paths
-from src.components.data import CONFIG
-
-
-SETTINGS_PATH = 'settings/config.yaml'
+from src.components.data import CONFIG, Paths
 
 
 class FreshStartup(Frame):
@@ -16,7 +13,7 @@ class FreshStartup(Frame):
             app (Tk):
         """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
-        app.geometry('400x350+%s+%s' % (
+        app.geometry('400x400+%s+%s' % (
             math.floor(self.winfo_screenwidth() / 2 - app.winfo_width()),
             math.floor(self.winfo_screenheight() / 2 - app.winfo_height())
         ))
@@ -41,9 +38,11 @@ class FreshStartup(Frame):
         Args:
             app (Tk):
         """
-        settings = save_paths(SETTINGS_PATH)
-        dl_path = settings['paths'].get('downloads')
-        media_path = settings['paths'].get('media')
-        if dl_path and media_path:
-            app.settings = settings
+        settings = save_paths(CONFIG.settings_path)
+        missing_path = False
+        for name, path in settings.items():
+            if not path:
+                missing_path = True
+        if not missing_path:
+            CONFIG.paths = Paths(**settings['paths'])
             app.change_screen('main')

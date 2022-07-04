@@ -1,11 +1,5 @@
-"""
-...... Inactive ......
-Functionality needed:
-    - Adjust window size
-    - Toolbar icon when showing
-"""
 from tkinter import *
-from .data import CONFIG, Images
+from .data import CONFIG
 from .ui import OMButton
 
 
@@ -30,7 +24,7 @@ class TitleBar(Frame):
         }
         min_button = OMButton(self, text='-', command=lambda x=app: self.__minimize(x),
                               highlight_bg=CONFIG.colors.alt, **button_attribs)
-        max_button = OMButton(self, text='^', command=lambda x=app: self.__maximize(x),
+        max_button = OMButton(self, text='⛶', command=lambda x=app: self.__maximize(x),
                               highlight_bg=CONFIG.colors.alt, **button_attribs)
         close_button = OMButton(self, text='X', command=app.destroy,
                                 highlight_bg=CONFIG.colors.special_alt,  **button_attribs)

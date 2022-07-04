@@ -3,9 +3,9 @@ import shutil
 import os
 import re
 import json
+import time
 from tkinter import *
 from tkinter.ttk import Progressbar, Style
-from copy import deepcopy
 
 from src.components.ui import ButtonGroup, CheckBoxes, OMButton
 from src.funcs.general import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
@@ -14,11 +14,12 @@ from src.funcs.user_configuration import get_user_set_path, save_paths
 from src.components.data import CONFIG, Images
 
 
-SETTINGS_PATH = 'settings/config.yaml'
-
-
 class Main(Frame):
     def __init__(self, app, bg=CONFIG.colors.main, *args, **kwargs):
+        """
+        Args:
+            app (src.app.OrganizeMedia):
+        """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
         app.geometry(CONFIG.geometry)
         # Images
@@ -26,8 +27,7 @@ class Main(Frame):
 
         ''' Filter media will contain a dictionary like:
                         {path: {file_name: name, title: title, kind: kind, ...}}'''
-        self.filtered_media = {}
-        self.all_media_info = {}
+        self.all_media_info = dict()
         self.disable_buttons = False
 
         # Frames
@@ -43,7 +43,7 @@ class Main(Frame):
         # Buttons
         self.buttons = ButtonGroup(self.left_frame)
         self.buttons.locate_media.config(command=self.locate_media)
-        self.buttons.select_media.config(command=self.on_press_select_media)
+        self.buttons.select_media.config(command=lambda x='select_media': app.change_screen(x))
         self.buttons.organize.config(command=self.on_press_organize_media)
         self.buttons.pack(side=TOP, padx=10, pady=10, fill=X)
 
@@ -70,8 +70,10 @@ class Main(Frame):
         # self.status_bar.pack_forget()
 
         self.buttons.organize.pack_forget()
-        if not app.settings['paths'].get('downloads'):
+        if not CONFIG.paths.downloads:
             self.buttons.select_media.pack_forget()
+
+        self.media_files_info(app.selected_media)
 
     def on_progress_bar_adjust(self, event):
         """ Handles resizing progress bar, when the app is resized """
@@ -86,21 +88,25 @@ class Main(Frame):
             'x': self.master.winfo_x(),
             'y': self.master.winfo_y(),
         }
-        os.makedirs('settings', exist_ok=True)
-        with open('settings/cache', 'w') as file:
+        os.makedirs(os.path.dirname(CONFIG.cache_path), exist_ok=True)
+        with open(CONFIG.cache_path, 'w') as file:
             json.dump(cache, file, indent=2)
 
     def get_media_info_from_paths(self, paths):
         """ Gets all media information from media files in the given paths
 
-        :param paths: A list of paths to media files
-        :return: A dictionary of information about each file
+        Args:
+            paths (list): A list of paths to media files
+
+        Returns: A dictionary of information about each file
         """
         self.progress_bar_appear()
-        self.progress_bar['maximum'] = len([file for path in paths
-                                            for x, y, files in os.walk(path)
-                                            for file in files
-                                            if file.split('.')[-1] in self.master.settings['media_extensions']])
+        self.progress_bar['maximum'] = len([
+            file_name for path in paths
+            for x, y, files in os.walk(path)
+            for file_name in files
+            if file_name.split('.')[-1] in CONFIG.media_extensions
+        ])
         self.progress_bar['value'] = 0
         self.s.configure(style=self.style, text='Getting media info...')
         file_info = {}
@@ -112,7 +118,7 @@ class Main(Frame):
                     current_file_path = os.path.join(path, file)
                     extension = file.split('.')[-1]
                     # If its a media file
-                    if extension in self.master.settings['media_extensions'] and os.path.isfile(current_file_path):
+                    if extension in CONFIG.media_extensions and os.path.isfile(current_file_path):
                         renamed_file = initcap_file_name(file)
                         file_folder_path = os.path.dirname(current_file_path)
                         bottom_folder = os.path.basename(file_folder_path)
@@ -178,7 +184,8 @@ class Main(Frame):
                         file_info[folder_path][current_file_path] = {
                             'title': title, 'renamed_file_name': renamed_file_name, 'file_name': file,
                             'file_path': current_file_path, 'top_folder_title': top_folder_title,
-                            'kind': kind, 'year': year, 'season': season, 'episode': episode}
+                            'kind': kind, 'year': year, 'season': season, 'episode': episode, 'selected': True
+                        }
                         self.progress_bar['value'] += 1
                         self.s.configure(style=self.style,
                                          text=f'Got info for {file}\nIn the {folder_path} directory\n')
@@ -219,7 +226,7 @@ class Main(Frame):
         self.progress_complete('Gathered Media!')
         return file_info
 
-    def media_files_info(self, folder_paths=[]):
+    def media_files_info(self, folder_paths):
         """ Gets information about each media file in a path, from IMDb.
 
         Output sample:
@@ -234,28 +241,26 @@ class Main(Frame):
                     'genres': ['Drama', 'Comedy'],
                     'file_name': 'house.s01e01.avi'}}
 
-        :param folder_paths: The path to your media files
-        :return: A dictionary of information about each file
+        Args:
+            folder_paths (list): The path to your media files
+
+        Returns: A dictionary of information about each file
         """
+        if not folder_paths:
+            return None
+
         self.all_media_info = self.get_media_info_from_paths(folder_paths)
 
         if not self.all_media_info:
             self.progress_bar_appear()
             self.progress_complete('\nNo Media Detected...\n')
-            return 'No Media'
-
+            self.buttons.organize.pack_forget()
         else:
-            self.filter_window(self.all_media_info)
+            self.filter_window()
+            self.buttons.organize.pack(side=TOP, padx=10, pady=10, fill=X)
 
-    def filter_window(self, all_media):
-        """ The filter window that appears to filter the media files to be sorted.
-
-        Args:
-            all_media (dict): The dictionary of all the media to filter
-
-        Returns: Filtered media
-        """
-        self.filtered_media = deepcopy(all_media)
+    def filter_window(self):
+        """ The filter window that appears to filter the media files to be sorted. """
 
         def on_toggle_off(metadata):
             """ A function that is passed to the CheckBox,
@@ -267,8 +272,7 @@ class Main(Frame):
             """
             origin = metadata.get('origin_dir')
             file_path = metadata.get('file_path')
-            if self.filtered_media.get(origin, {}).get(file_path):
-                del self.filtered_media[origin][file_path]
+            self.all_media_info[origin][file_path].update({'selected': False})
 
         def on_toggle_on(metadata):
             """ A function that is passed to the CheckBox,
@@ -280,10 +284,9 @@ class Main(Frame):
             """
             origin = metadata.get('origin_dir')
             file_path = metadata.get('file_path')
-            if not self.filtered_media.get(origin, {}).get(file_path):
-                self.filtered_media[origin][file_path] = all_media[origin][file_path]
+            self.all_media_info[origin][file_path].update({'selected': True})
 
-        def reform_files_dict(files):
+        def reform_files_dict():
             """ Reforms the media files dict, to a format that can be used to generate CheckBoxes.
                 Here we also pass our on_toggle_off and on_toggle_on functions,
                 as well as any additional metadata we need the CheckBox to have.
@@ -294,7 +297,7 @@ class Main(Frame):
             Returns: The reformed files dict
             """
             new_files = dict()
-            for folder_dir, info in files.items():
+            for folder_dir, info in self.all_media_info.items():
                 # Reduce the display of the folder path to the last two folders, maximum
                 folder_path = os.path.normpath(folder_dir).split(os.sep)
                 if len(folder_path) > 1:
@@ -327,19 +330,25 @@ class Main(Frame):
 
             return new_files
 
-        checkboxes = CheckBoxes(self.canvas_frame, reform_files_dict(all_media))
+        checkboxes = CheckBoxes(self.canvas_frame, reform_files_dict())
         checkboxes.pack(side=LEFT, anchor=NW, fill=BOTH, expand=True)
 
     def recursively_organize_shows_and_movies(self, delete_folders=True):
-        dl_path = get_user_set_path(SETTINGS_PATH, 'downloads')
-        media_path = get_user_set_path(SETTINGS_PATH, 'media')
+        dl_path = CONFIG.paths.downloads
+        media_path = CONFIG.paths.media
         folders_to_delete = []
         self.progress_bar_appear()
-        self.progress_bar['maximum'] = len(self.filtered_media.keys())
+        self.progress_bar['maximum'] = len([
+            p for inf in self.all_media_info.values()
+            for p, det in inf.items()
+            if det.get('selected')
+        ])
         self.progress_bar['value'] = 0
 
-        for folder_path, i in self.filtered_media.items():
+        for folder_path, i in self.all_media_info.items():
             for file_path, info in i.items():
+                if not info['selected']:
+                    continue
                 path = os.path.dirname(file_path)
                 file = os.path.basename(file_path)
                 extension = file.split('.')[-1]
@@ -386,88 +395,6 @@ class Main(Frame):
         self.progress_complete('\nMedia Organized!\n')
         return None
 
-    def todo_window(self):
-
-        def upon_select(widget):
-            if widget['button'].var.get():
-                if widget['todo'] not in self.final_todo_list:
-                    self.final_todo_list.append(widget['todo'])
-                    widget['button']['bg'] = CONFIG.colors.alt
-            else:
-                if widget['todo'] in self.final_todo_list:
-                    self.final_todo_list.remove(widget['todo'])
-                    widget['button']['bg'] = CONFIG.colors.main
-
-        def on_submit():
-            self.toggle_buttons_enabled()
-            submit_button.destroy()
-            main_frame.destroy()
-
-        main_frame = Frame(self.canvas_frame, bg=CONFIG.colors.main, bd=1, relief=RAISED)
-        main_frame.pack(padx=8, pady=90)
-        self.toggle_buttons_enabled()
-
-        self.final_todo_list = []
-
-        todo_list = {
-            'downloads': 'Downloads',
-            'media': 'Movies and TV Shows'
-        }
-        Label(main_frame, text='Which folders would you like to organize?', font=CONFIG.fonts.medium,
-              bg=CONFIG.colors.main, fg=CONFIG.colors.font).pack(side=TOP, fill=X, ipady=20, ipadx=20)
-
-        options_frame = Frame(main_frame, bg=CONFIG.colors.main, bd=2, relief=SUNKEN)
-        options_frame.pack(side=TOP)
-
-        dictionary = dict()
-        for i, desc in todo_list.items():
-            dictionary[i] = {'button': Checkbutton(options_frame, text=desc, onvalue=True, offvalue=False,
-                                                   font=CONFIG.fonts.xsmall,
-                                                   anchor=NW, bg=CONFIG.colors.alt, fg=CONFIG.colors.font,
-                                                   selectcolor=CONFIG.colors.main)}
-            dictionary[i]['button'].var = BooleanVar(value=True)
-            self.final_todo_list.append(i)
-            dictionary[i]['button']['variable'] = dictionary[i]['button'].var
-            dictionary[i]['button']['command'] = lambda w=dictionary[i]: upon_select(w)
-            dictionary[i]['button'].pack(side=TOP, fill=X, padx=1, pady=1)
-            dictionary[i]['todo'] = i
-        submit_button = OMButton(main_frame, text='Select', command=on_submit, font=CONFIG.fonts.small,
-                                 bg=CONFIG.colors.special, highlight_bg=CONFIG.colors.special_alt, fg=CONFIG.colors.font)
-        submit_button.pack(side=BOTTOM, pady=20)
-        self.wait_window(main_frame)
-        return self.final_todo_list
-
-    def on_press_select_media(self):
-        """
-        When you press "Select Media" the following should happen:
-            - Popup window displaying a checklist of options for things that will happen:
-                - Move media from Downloads to Movies and TV Shows folders
-                - Organize media already in the Movie and TV Shows folders
-            - After choosing one or both options a Filter window will appear
-            - The filter window will have two possible columns; One of downloads and one for existing media
-            - Once files are selected, a button will appear to start organizing
-        """
-        # Reset Selected Media
-        for item in self.canvas_frame.children.values():
-            item.pack_forget()
-
-        options = self.todo_window()
-        if options:
-            paths = []
-            for option in options:
-                if option == 'media':
-                    path = get_user_set_path(SETTINGS_PATH, option)
-                    paths.append(os.path.join(path, 'TV Shows'))
-                    paths.append(os.path.join(path, 'Movies'))
-                else:
-                    paths.append(get_user_set_path(SETTINGS_PATH, option))
-
-            outcome = self.media_files_info(folder_paths=paths)
-            if outcome != 'No Media':
-                self.buttons.organize.pack(side=TOP, padx=10, pady=10, fill=X)
-            else:
-                self.buttons.organize.pack_forget()
-
     def on_press_organize_media(self):
         """ Start organizing media """
         tl = threading.Thread(target=self.recursively_organize_shows_and_movies)
@@ -495,6 +422,13 @@ class Main(Frame):
             self.disable_buttons = True
 
     def locate_media(self):
-        self.master.settings = save_paths(SETTINGS_PATH)
-        if self.master.settings['paths'].get('downloads'):
+        settings = save_paths(CONFIG.settings_path)
+        missing_path = False
+        for name, path in settings.items():
+            if path:
+                setattr(CONFIG.paths, name, path)
+        for path in CONFIG.paths.to_dict().values():
+            if not path:
+                missing_path = True
+        if not missing_path:
             self.buttons.select_media.pack(side=TOP, padx=10, pady=10, fill=X)
