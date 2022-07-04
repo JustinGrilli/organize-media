@@ -1,4 +1,6 @@
 import math
+import os
+import yaml
 from tkinter import *
 
 from src.components.ui import Buttons
@@ -38,6 +40,15 @@ class FreshStartup(Frame):
         Args:
             app (Tk):
         """
+        os.makedirs(os.path.dirname(CONFIG.settings_path), exist_ok=True)
+        if not os.path.exists(CONFIG.settings_path):
+            with open(CONFIG.settings_path, 'w') as c:
+                user_settings = {
+                    'media_extensions': CONFIG.media_extensions,
+                    'paths': CONFIG.paths.to_dict()
+                }
+                yaml.dump(user_settings, c, indent=2)
+
         settings = save_paths(CONFIG.settings_path)
         missing_path = False
         for name, path in settings.items():

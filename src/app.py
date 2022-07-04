@@ -28,10 +28,9 @@ class OrganizeMedia(Tk):
         self.__images = Images()
         self.titlebar = TitleBar(self, image=self.__images.icon)
         self.titlebar.pack(side=TOP, fill=X)
-        self.settings = self.__get_user_settings()
         # Screen
-        dl_path = self.settings['paths'].get('downloads')
-        media_path = self.settings['paths'].get('media')
+        dl_path = CONFIG.paths.downloads
+        media_path = CONFIG.paths.media
         if not dl_path or not media_path:
             self.screen = FreshStartup(self)
         else:
@@ -39,22 +38,6 @@ class OrganizeMedia(Tk):
         self.screen.pack(fill=BOTH, expand=True)
         self.bind('<Button-1>', self.adjust_window)
         self.bind('<Motion>', self.mouse_position)
-
-    @staticmethod
-    def __get_user_settings():
-        # Initialize user settings if they don't exist
-        os.makedirs(os.path.dirname(CONFIG.settings_path), exist_ok=True)
-        if not os.path.exists(CONFIG.settings_path):
-            with open(CONFIG.settings_path, 'w') as c:
-                user_settings = {
-                    'media_extensions': CONFIG.media_extensions,
-                    **CONFIG.paths.to_dict()
-                }
-                yaml.dump(user_settings, c, indent=2)
-
-        with open(CONFIG.settings_path) as file:
-            settings = yaml.safe_load(file)
-        return settings
 
     def mouse_position(self, event):
         """
