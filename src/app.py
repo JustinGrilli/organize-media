@@ -1,6 +1,6 @@
 import os
 import yaml
-from tkinter import *
+from tkinter import Tk, Toplevel, TOP, X, BOTH
 
 from screens import FreshStartup, Main, SelectMedia
 from components.data import CONFIG, Images, OMImage
@@ -14,20 +14,24 @@ SCREENS = {
 }
 
 
-class OrganizeMedia(Tk):
-    """ Utility GUI Tool, used to rename and organize media files -
-        such as Movies and TV Shows - into appropriate folders. """
-
-    def __init__(self):
-        Tk.__init__(self)
-        self.mouse_edges = set()
-        self.selected_media = set()
-        self.config(bg=CONFIG.colors.main)
+class MainWindow(Toplevel):
+    def __init__(self, app, *args, **kwargs):
+        """
+        Args:
+            app (Tk):
+        """
+        Toplevel.__init__(self, app, *args, **kwargs)
         self.geometry(CONFIG.geometry)
-        self.title(CONFIG.title)
+        self.overrideredirect(True)
+        self.is_fullscreen = False
+        self.mouse_edges = set()
+
+        self.selected_media = set()
+
         self.__images = Images()
         self.titlebar = TitleBar(self, image=self.__images.icon)
         self.titlebar.pack(side=TOP, fill=X)
+
         # Screen
         dl_path = CONFIG.paths.downloads
         media_path = CONFIG.paths.media
@@ -36,10 +40,11 @@ class OrganizeMedia(Tk):
         else:
             self.screen = Main(self)
         self.screen.pack(fill=BOTH, expand=True)
-        self.bind('<Button-1>', self.adjust_window)
-        self.bind('<Motion>', self.mouse_position)
 
-    def mouse_position(self, event):
+        self.bind('<Button-1>', self.__adjust_window)
+        self.bind('<Motion>', self.__mouse_position)
+
+    def __mouse_position(self, event):
         """
             Changes the mouse cursor if it is near an edge/corner of the window,
             and detects which edge(s) the cursor is near.
@@ -82,12 +87,13 @@ class OrganizeMedia(Tk):
             self.mouse_edges = set()
             self.config(cursor='arrow')
 
-    def adjust_window(self, event):
+    def __adjust_window(self, event):
         """ Adjusts the geometry of the window, based on the edge(s) the mouse cursor is near """
         if not self.mouse_edges:
             return None
 
-        w, h, x, y = self.winfo_width(), self.winfo_height(), self.winfo_x(), self.winfo_y()
+        w, h = self.winfo_width(), self.winfo_height()
+        x, y = self.winfo_x(), self.winfo_y()
         click_start_x = event.x_root
         click_start_y = event.y_root
 
@@ -122,6 +128,47 @@ class OrganizeMedia(Tk):
         self.screen.destroy()
         self.screen = SCREENS[next_screen](self)
         self.screen.pack(fill=BOTH, expand=True)
+
+    def minimize(self):
+        self.master.iconify()
+
+    def maximize(self):
+        self.wm_attributes('-alpha', 0)
+        self.overrideredirect(False)
+        if self.is_fullscreen:
+            self.wm_attributes('-fullscreen', 0)
+            self.is_fullscreen = False
+        else:
+            self.wm_attributes('-fullscreen', 1)
+            self.is_fullscreen = True
+        self.wm_attributes('-alpha', 1)
+        self.overrideredirect(True)
+
+    def destroy(self):
+        super().destroy()
+        self.master.destroy()
+
+
+class OrganizeMedia(Tk):
+    """ Utility GUI Tool, used to rename and organize media files -
+        such as Movies and TV Shows - into appropriate folders. """
+
+    def __init__(self):
+        Tk.__init__(self)
+        self.wm_attributes('-alpha', 0)
+        self.config(bg=CONFIG.colors.main)
+        self.title(CONFIG.title)
+        self.iconbitmap('Images/toolbar_icon.ico')
+        self.window = MainWindow(self, bg=CONFIG.colors.main)
+
+        self.bind('<Unmap>', self.__on_unmap)
+        self.bind('<Map>', self.__on_map)
+
+    def __on_unmap(self, event):
+        self.window.withdraw()
+
+    def __on_map(self, event):
+        self.window.deiconify()
 
 
 app = OrganizeMedia()

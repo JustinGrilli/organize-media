@@ -12,7 +12,7 @@ class FreshStartup(Frame):
     def __init__(self, app, bg=CONFIG.colors.main, *args, **kwargs):
         """
         Args:
-            app (Tk):
+            app (Toplevel):
         """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
         app.geometry('400x400+%s+%s' % (
@@ -51,7 +51,7 @@ class FreshStartup(Frame):
 
         settings = save_paths(CONFIG.settings_path)
         missing_path = False
-        for name, path in settings.items():
+        for name, path in settings['paths'].items():
             if not path:
                 missing_path = True
         if not missing_path:

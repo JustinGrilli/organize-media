@@ -18,7 +18,7 @@ class Main(Frame):
     def __init__(self, app, bg=CONFIG.colors.main, *args, **kwargs):
         """
         Args:
-            app (src.app.OrganizeMedia):
+            app (Toplevel):
         """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
         app.geometry(CONFIG.geometry)
@@ -424,7 +424,7 @@ class Main(Frame):
     def locate_media(self):
         settings = save_paths(CONFIG.settings_path)
         missing_path = False
-        for name, path in settings.items():
+        for name, path in settings['paths'].items():
             if path:
                 setattr(CONFIG.paths, name, path)
         for path in CONFIG.paths.to_dict().values():
