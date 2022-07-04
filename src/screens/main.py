@@ -3,14 +3,13 @@ import shutil
 import os
 import re
 import json
-import time
 from tkinter import *
 from tkinter.ttk import Progressbar, Style
 
-from src.components.ui import ButtonGroup, CheckBoxes, OMButton
+from src.components.ui import ButtonGroup, CheckBoxes
 from src.funcs.general import tv_show_ep_from_file_name, tv_show_ep_from_folder_structure, \
     initcap_file_name, get_media_title
-from src.funcs.user_configuration import get_user_set_path, save_paths
+from src.funcs.user_configuration import save_paths
 from src.components.data import CONFIG, Images
 
 
@@ -22,6 +21,8 @@ class Main(Frame):
         """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
         app.geometry(CONFIG.geometry)
+        # Used to cache info when exiting the application
+        self.bind('<Destroy>', self.__on_destroy)
         # Images
         self.images = Images()
 
@@ -32,7 +33,6 @@ class Main(Frame):
 
         # Frames
         self.left_frame = Frame(self, bg=CONFIG.colors.main, bd=2, relief=RAISED)
-        self.bind('<Destroy>', self.__on_destroy)  # Used to cache info when exiting the application
         self.canvas_frame = Frame(self, bg=CONFIG.colors.main)
         self.status_bar = Canvas(self, bg=CONFIG.colors.sub, bd=0, highlightthickness=0,
                                  width=self.winfo_width(), height=0, relief=SUNKEN)

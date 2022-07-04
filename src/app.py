@@ -163,6 +163,12 @@ class OrganizeMedia(Tk):
 
         self.bind('<Unmap>', self.__on_unmap)
         self.bind('<Map>', self.__on_map)
+        # Defer the focus to the main window
+        self.bind('<FocusIn>', self.__on_focus)
+
+    def __on_focus(self, event):
+        """ Defer the focus to the MainWindow """
+        self.window.focus()
 
     def __on_unmap(self, event):
         self.window.withdraw()
