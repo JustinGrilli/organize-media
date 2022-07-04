@@ -14,8 +14,8 @@ class FreshStartup(Frame):
         """
         Frame.__init__(self, app, bg=bg, *args, **kwargs)
         app.geometry('400x400+%s+%s' % (
-            math.floor(self.winfo_screenwidth() / 2 - app.winfo_width()),
-            math.floor(self.winfo_screenheight() / 2 - app.winfo_height())
+            math.floor(self.winfo_screenwidth() / 2 - 200),
+            math.floor(self.winfo_screenheight() / 2 - 200)
         ))
         buttons = Buttons()
         lbl1 = Label(self, text='Welcome,', bg=bg, fg=CONFIG.colors.alt, font=CONFIG.fonts.xxlarge)
