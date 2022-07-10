@@ -1,9 +1,7 @@
-import os
-import yaml
 from tkinter import Tk, Toplevel, TOP, X, BOTH
 
 from screens import FreshStartup, Main, SelectMedia
-from components.data import CONFIG, Images, OMImage
+from components.data import CONFIG, Images
 from components import TitleBar
 
 

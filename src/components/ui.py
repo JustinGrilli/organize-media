@@ -521,7 +521,7 @@ class CheckBoxes(Frame):
                     metadata = item if on_toggle_off and on_toggle_on else None
                     content_checkbox = CheckBox(
                         checkbox.content_frame,
-                        text=item.get('renamed_file_name'),
+                        text=item.get('file_rename'),
                         font=CONFIG.fonts.xsmall,
                         tooltip=item.get('file_path'),
                         expandable=False,

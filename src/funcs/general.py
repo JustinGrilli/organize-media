@@ -1,27 +1,135 @@
 import re
 import os
+from pathlib import Path
 from datetime import date
 
 
-def initcap_file_name(string):
-    extension = string.split('.')[-1] if '.' in string else None
+SEASON_EPISODE_PATTERNS = [
+    # Season 1 Episode 1 or Season 01 Episode 01
+    r'season[^\w\d]\d{1,2}[^\w\d]episode[^\w\d]\d{1,2}',
+    # s1e1e2 or s01e01e02
+    r's\d{1,2}e\d{1,2}e\d{1,2}',
+    # s1e1 or s01e01
+    r's\d{1,2}e\d{1,2}',
+    # s1 e1 or s01 e01
+    r's\d{1,2}[^\w\d]e\d{1,2}',
+    # 1x1 or 10x01
+    r'\d{1,2}x\d{1,2}',
+    # 101 or 1001
+    r'\d{3,4}'
+]
+EPISODE_PATTERNS = [
+    # Episode 1 or Episode 01
+    r'episode[^\w\d]\d{1,2}',
+    # e1e2 or e01e02
+    r'e\d{1,2}e\d{1,2}',
+    # e1 or e01
+    r'e\d{1,2}',
+    # x1 or x01
+    r'x\d{1,2}',
+    # 1 - 9999
+    r'\d{1,4}'
+]
+
+
+def initcap_file_name(file_name):
+    extension = file_name.split('.')[-1] if '.' in file_name else ''
+    new_string = file_name.replace(extension, '')
+    new_string = re.sub(r'[^\w\d()]+', ' ', new_string.title()).strip()
     if extension:
-        new_string = string.replace(extension, '')
+        new_string = f'{new_string}.{extension}'
+    return new_string
+
+
+def generate_show_patterns(show_pattern: str) -> str:
+    # Start of line + show_pattern + end of line
+    yield show_pattern.join([r'^(', r')$'])
+    # Non word or num + show_pattern + end of line
+    yield show_pattern.join([r'[^\w\d(](', r')$'])
+    # Start of line + show_pattern + Non word or num
+    yield show_pattern.join([r'^(', r')[^\w\d)]'])
+    # Non word or num + show_pattern + Non word or num
+    yield show_pattern.join([r'[^\w\d(](', r')[^\w\d)]'])
+
+
+def get_show_season_and_episode(file_path: str) -> tuple[str, str, str]:
+
+    def get_show_from_patterns(patterns):
+        for media_pattern in patterns:
+            for pattern in generate_show_patterns(media_pattern):
+                found = re.findall(pattern, file_name, re.IGNORECASE)
+                if found:
+                    return found[0]
+        return ''
+
+    file_name = os.path.basename(file_path)
+    # Determine the Season # from folders along the files directory
+    show = get_show_from_patterns(SEASON_EPISODE_PATTERNS)
+    season = ''
+    episode = ''
+    for f in os.path.split(os.path.dirname(file_path)):
+        s = re.findall(r'season (\d+)', f, re.IGNORECASE)
+        if s:
+            season = s[0] if isinstance(s, list) else s
+            if len(season) == 1:
+                season = f'0{season}'
+
+    # Parse the Season # and Episode # from show
+    if show:
+        nums = [
+            n if len(n) > 1 else f'0{n}'
+            for n in re.findall(r'\d+', show)
+        ]
+        if len(nums) == 3:
+            return show, nums[0], f'{nums[1]}-{nums[2]}'
+        if len(nums) == 2:
+            return show, nums[0], nums[1]
+        if len(nums) == 1:
+            nums = [n for n in nums[0]]
+            if len(nums) == 4:
+                # show, '00', '00'
+                return show, ''.join(nums[0:2]), ''.join(nums[2:4])
+            if len(nums) == 3:
+                # show, '0', '00'
+                return show, nums[0], ''.join(nums[1:3])
+
+    # If the show could not be determined by SEASON_EPISODE_PATTERNS,
+    # but a season was parsed from folders along the files directory:
+    # Get show from EPISODE_PATTERNS
+    if not show and season:
+        show = get_show_from_patterns(EPISODE_PATTERNS)
+
+    # Parse the Episode # from show
+    if show:
+        nums = [
+            n if len(n) > 1 else f'0{n}'
+            for n in re.findall(r'\d+', show)
+        ]
+        if len(nums) == 2:
+            return show, season, f'{nums[1]}-{nums[2]}'
+        if len(nums) == 1:
+            return show, season, nums[0]
+
+    return show, season, episode
+
+
+def get_file_title(file_name: str, show: str) -> str:
+    if show:
+        title = file_name.replace(show, '')
+        title = initcap_file_name(title)
     else:
-        new_string = string
-    new_string = re.sub(r'[^a-zA-Z0-9()]', ' ', new_string)
-    new_string = re.sub(' +', ' ', new_string)
-    new_string = new_string.title()
-    if extension:
-        new_string = '.'.join([new_string, extension])
-    return new_string.strip()
+        title = initcap_file_name(file_name)
+    title = re.sub(r'\.\w+$', r'', title)
+    return title
 
 
-def tv_show_ep_from_file_name(file):
+def tv_show_ep_from_file_name(file_name):
     """ Finds the pattern of the TV Show, and number for the season and episode based on the pattern.
 
-    :param file: The file name to extract the tv show episode pattern and season from.
-    :return: The tv show pattern, tv show season number, and episode number.
+    Args:
+        file_name (str): The file name to extract the tv show episode pattern and season from.
+    
+    Returns: The tv show pattern, tv show season number, and episode number.
     """
     bad_nums = ['360', '480', '720', '1080', '264']
     tv_show_episode = None
@@ -52,7 +160,7 @@ def tv_show_ep_from_file_name(file):
     ]
     current_year = date.today().year
     for pattern in patterns:
-        matches = re.findall(pattern, file, re.IGNORECASE)
+        matches = re.findall(pattern, file_name, re.IGNORECASE)
         # If the pattern returns matches
         if matches:
             if patterns.index(pattern) != 4:
@@ -121,12 +229,13 @@ def tv_show_ep_from_folder_structure(file_path):
     return extractions['season'], extractions['episode']
 
 
-def get_media_title(tv_show_episode, file_name):
+def get_media_title(tv_show_episode, file_name) -> str:
     """ Extract the title from the file name.
 
-    :param tv_show_episode: The season/episode as it is defined in the file name
-    :param file_name: The file name
-    :return: The title
+    Args:
+        tv_show_episode (str): The season/episode as it is defined in the file name
+        file_name (str): The file name
+    Returns: The title
     """
     clean_file_name = initcap_file_name(file_name)
     if tv_show_episode:
@@ -143,10 +252,10 @@ def get_media_title(tv_show_episode, file_name):
     else:
         # The title should start with a string and stop at the first single digit
         title = re.findall(r'^('
-                           r'[a-z:\- ]+[0-9]?$|'
-                           r'[a-z:\- ]+[0-9]?[^\d]\([a-z]+\)$|'
-                           r'[a-z:\- ]+[0-9]?[^\d]\([a-z]+\)[^\d]|'
-                           r'[a-z:\- ]+[0-9]?[^\d]|[0-9]+[^\w\d]?'
+                           r'[a-z:\- ]+\d?$|'
+                           r'[a-z:\- ]+\d?\D\(\w+\)$|'
+                           r'[a-z:\- ]+\d?\D\(\w]+\)\D|'
+                           r'[a-z:\- ]+\d?\D|\d+[^\w\d]?'
                            r')', clean_file_name, re.IGNORECASE)
         title = re.sub(r'[^a-zA-Z0-9\-]', ' ', title[0]).strip() if title else None
         return title
@@ -165,3 +274,12 @@ def rename_all_media_in_directory(media_info):
             os.rename(info['path'], renamed_file_path)
     return None
 
+
+if __name__ == '__main__':
+    test_show = Path('This Test/Season 2/this.test.e30.avi')
+    test_movie = 'This Test/this.test.1080p.avi'
+    print(test_show.parts[0])
+    se_ep, s, e = get_show_season_and_episode(test_show)
+    print(se_ep, s, e)
+    se_ep, s, e = get_show_season_and_episode(test_movie)
+    print(se_ep, s, e)
